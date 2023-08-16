@@ -11,7 +11,7 @@ app.use(morgan('dev'));
 const fetchNumbers = async (url) => {
     try {
         const start = performance.now();
-        const response = await axios.get(url, { timeout: 2000 });
+        const response = await axios.get(url, { timeout: 490 });
         const end = performance.now();
         if (response.status === 200) {
             const data = response.data;
@@ -33,16 +33,14 @@ const fetchNumbers = async (url) => {
 app.get('/numbers', async (req, res, next) => {
     try {
         const urls = Array.isArray(req.query.url) ? req.query.url : [req.query.url];
-        const allNumbers = [];
 
-        for (const url of urls) {
-            try {
-                const numbers = await fetchNumbers(url);
-                allNumbers.push(...numbers);
-            } catch (error) {
-                // Ignore errors and continue with the next URL as we are not right now handling any invalid urls
-            }
-        }
+        // parallel requestes to improve response time
+        const promises = urls.map(url => fetchNumbers(url));
+        const results = await Promise.all(promises);
+
+        const allNumbers = results.reduce((acc, result) => {
+            return acc.concat(result);
+        }, []);
 
         const uniqueNumbers = [...new Set(allNumbers)];
         const sortedNumbers = uniqueNumbers.sort((a, b) => a - b);
